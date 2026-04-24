@@ -10,11 +10,14 @@
     "packages/host-app",
     "examples/hello-plugin",
     "examples/markdown-plugin",
-    "examples/todo-plugin"
+    "examples/todo-plugin",
+    "e2e"
   ],
   "scripts": {
-    "build": "npm -w @pluginforge/core run build && npm -w @pluginforge/sdk run build && npm -w @pluginforge/host-app run build",
+    "build": "npm -w @pluginforge/sdk run build && npm -w @pluginforge/core run build && npm -w @pluginforge-examples/hello-plugin run build && npm -w @pluginforge-examples/markdown-plugin run build && npm -w @pluginforge-examples/todo-plugin run build && npm -w @pluginforge/host-app run build",
     "test": "npm -w @pluginforge/core run test",
+    "bench": "npm -w @pluginforge/core run bench",
+    "test:e2e": "npm -w @pluginforge/e2e run test",
     "dev": "npm -w @pluginforge/host-app run dev",
     "lint": "tsc -b packages/core packages/sdk packages/host-app --noEmit"
   },

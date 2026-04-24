@@ -4,9 +4,12 @@
 
 import type { PluginManifest } from "@pluginforge/sdk";
 
-import helloSrc from "../../../examples/hello-plugin/src/index.ts?raw";
-import mdSrc from "../../../examples/markdown-plugin/src/index.ts?raw";
-import todoSrc from "../../../examples/todo-plugin/src/index.ts?raw";
+// Load the *compiled* plugin output so type annotations are stripped
+// before the source enters a Web Worker. Build the examples first:
+// `npm -w @pluginforge-examples/hello-plugin run build` (and the others).
+import helloSrc from "../../../examples/hello-plugin/dist/index.js?raw";
+import mdSrc from "../../../examples/markdown-plugin/dist/index.js?raw";
+import todoSrc from "../../../examples/todo-plugin/dist/index.js?raw";
 
 import helloManifest from "../../../examples/hello-plugin/plugin.json";
 import mdManifest from "../../../examples/markdown-plugin/plugin.json";
