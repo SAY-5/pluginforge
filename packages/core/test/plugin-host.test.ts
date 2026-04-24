@@ -131,6 +131,28 @@ describe("Host", () => {
     expect(res?.error?.code).toBe("PermissionDenied");
   });
 
+  it("terminate() rejects pending invoke() promises", async () => {
+    const { host, getWorker } = setup();
+    await host.load({
+      manifest: {
+        id: "com.example.hang",
+        name: "Hang",
+        version: "1.0.0",
+        main: "index.js",
+        capabilities: [],
+      },
+      bundle: "// no-op",
+    });
+    const w = getWorker();
+    // Fire an invoke that the fake worker will never answer.
+    const p = host.get("com.example.hang")!.invoke("slow", []);
+    // Give the post-back-to-worker tick a chance.
+    await new Promise((r) => setTimeout(r, 5));
+    expect(w.inbox.some((m) => m.kind === "req")).toBe(true);
+    host.get("com.example.hang")!.terminate();
+    await expect(p).rejects.toMatchObject({ message: /terminated/ });
+  });
+
   it("storage is scoped per plugin", async () => {
     const { host, getWorker } = setup();
     await host.load({

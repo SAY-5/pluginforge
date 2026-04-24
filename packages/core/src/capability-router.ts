@@ -88,10 +88,26 @@ export class CapabilityRouter {
       case "shell.run": {
         this.require("host:shell", method);
         const cmd = firstString(args);
+        const rest = args[1];
+        const extras = Array.isArray(rest) ? rest.map(String) : [];
         const cap = this.caps.find((c) => c.name === "host:shell");
         const allow = cap && cap.name === "host:shell" ? cap.params.allow : [];
-        if (!cmd || !allow.some((p) => simpleGlob(p, cmd))) {
-          throw new PermissionDeniedError(`shell.run: '${cmd}' not permitted`);
+        if (!cmd) throw new PermissionDeniedError("shell.run: cmd required");
+        // The full command line we'd actually execute — program plus args —
+        // is what the allow-list must vouch for. Joining with a single space
+        // is safe for matching because we reject any argument containing
+        // shell metacharacters below.
+        const fullCmd = [cmd, ...extras].join(" ");
+        const SHELL_META = /[;&|`$<>\n\r\x00()]/;
+        for (const piece of [cmd, ...extras]) {
+          if (SHELL_META.test(piece)) {
+            throw new PermissionDeniedError(
+              `shell.run: argument ${JSON.stringify(piece)} contains disallowed shell metacharacters`,
+            );
+          }
+        }
+        if (!allow.some((p) => simpleGlob(p, fullCmd))) {
+          throw new PermissionDeniedError(`shell.run: '${fullCmd}' not permitted`);
         }
         return;
       }

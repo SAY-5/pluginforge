@@ -27,6 +27,8 @@ export interface HostOptions {
   createWorker?: (bootstrapSrc: string, name: string) => WorkerLike;
   heartbeatIntervalMs?: number;
   heartbeatTimeoutMs?: number;
+  /** If a plugin fails to signal ready within this window, load() rejects. */
+  loadTimeoutMs?: number;
 }
 
 export interface WorkerLike {
@@ -66,12 +68,14 @@ export class Host {
   private readonly createWorker: NonNullable<HostOptions["createWorker"]>;
   private readonly heartbeatIntervalMs: number;
   private readonly heartbeatTimeoutMs: number;
+  private readonly loadTimeoutMs: number;
 
   constructor(private readonly opts: HostOptions) {
     this.hostImpl = new HostImpl(opts.storage, opts.callbacks);
     this.createWorker = opts.createWorker ?? defaultCreateWorker;
     this.heartbeatIntervalMs = opts.heartbeatIntervalMs ?? 500;
     this.heartbeatTimeoutMs = opts.heartbeatTimeoutMs ?? 3000;
+    this.loadTimeoutMs = opts.loadTimeoutMs ?? 15_000;
   }
 
   get loaded(): ReadonlyArray<LoadedPlugin> {
@@ -120,6 +124,19 @@ export class Host {
       rejectReady = rej;
     });
     let handshakeSeen = false;
+    let readyResolved = false;
+    // If the plugin's bundle throws during load, the worker may never send
+    // the post-load "ready". Time out the load so load() can reject.
+    const loadTimeout = setTimeout(() => {
+      if (!readyResolved) {
+        readyResolved = true;
+        state.status = "crashed";
+        state.statusListeners.forEach((l) => l("crashed"));
+        rejectReady(new Error(
+          `plugin ${state.manifest.id} failed to signal ready within load timeout`,
+        ));
+      }
+    }, this.loadTimeoutMs);
 
     state.worker.addEventListener("message", (ev: { data: unknown }) => {
       const msg = ev.data as (PluginOutboundMsg & { handshake?: boolean }) | undefined;
@@ -141,6 +158,11 @@ export class Host {
             this.startHeartbeat(state);
             return;
           }
+          // Post-load "ready". Only transition on the first one; later
+          // duplicates from a misbehaving plugin must not resurrect status.
+          if (readyResolved) return;
+          readyResolved = true;
+          clearTimeout(loadTimeout);
           state.status = "ready";
           resolveReady();
           state.statusListeners.forEach((l) => l("ready"));
@@ -259,6 +281,16 @@ export class Host {
     } catch {
       // ignore
     }
+    // Drain any in-flight invoke() promises so callers awaiting them don't
+    // hang forever. The plugin is gone; there's no one left to answer.
+    for (const [, pending] of state.pending) {
+      pending.reject(
+        Object.assign(new Error(`plugin ${pluginId} terminated`), {
+          code: "PluginCrashed",
+        }),
+      );
+    }
+    state.pending.clear();
     state.status = "terminated";
     state.statusListeners.forEach((l) => l("terminated"));
     this.plugins.delete(pluginId);

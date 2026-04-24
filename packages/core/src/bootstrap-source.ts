@@ -8,6 +8,15 @@ export const BOOTSTRAP_SOURCE = String.raw`
 "use strict";
 
 // ---- remove/override dangerous globals ----------------------------------
+//
+// The sandbox has two classes of risks:
+//   (1) ambient APIs that let a plugin reach the network, storage, or DOM
+//       of other pages (fetch, XHR, WebSocket, indexedDB, caches, ...),
+//   (2) introspection escapes that hand the plugin a reference to the real
+//       global scope or the Function constructor (self.constructor,
+//       BroadcastChannel, MessageChannel with transferable ports).
+// We kill both. The kill-IIFE runs synchronously before anything else so
+// nothing can capture an earlier reference to the killed globals.
 (function () {
   const kill = [
     "fetch",
@@ -26,6 +35,17 @@ export const BOOTSTRAP_SOURCE = String.raw`
     "openDatabase",
     "SharedArrayBuffer",
     "Atomics",
+    // Out-of-band comms / cross-origin channels.
+    "BroadcastChannel",
+    "MessageChannel",
+    "MessagePort",
+    // Wasm can import host-provided functions and smuggle state back;
+    // denying it is defense in depth beyond what fetch-blocking gives us.
+    "WebAssembly",
+    // Nested worker construction would let plugins spawn unsandboxed siblings.
+    "Worker",
+    "SharedWorker",
+    "ServiceWorker",
   ];
   for (const k of kill) {
     try {
@@ -39,10 +59,46 @@ export const BOOTSTRAP_SOURCE = String.raw`
       // Some globals are non-configurable; best-effort.
     }
   }
+  // Defuse the self.constructor → Function escape. The Function constructor
+  // turns a string into a function bound to the real global, which is how
+  // sandbox escapes normally happen ("new self.constructor.constructor('return fetch')()").
+  // We redefine the "constructor" slot on the worker global and freeze
+  // Function.prototype / Object.prototype so plugins can't re-plumb it.
+  try {
+    Object.defineProperty(self, "constructor", {
+      configurable: false,
+      writable: false,
+      value: Object,
+    });
+  } catch (_) {}
+  try {
+    // Replace the Function constructor with one that always throws.
+    const denyFunction = function () {
+      throw new Error("pluginforge: dynamic Function() is disabled in the sandbox");
+    };
+    denyFunction.prototype = Function.prototype;
+    // Freeze prototypes so plugins can't reinstate a reachable Function.
+    Object.freeze(Function.prototype);
+    Object.freeze(Object.prototype);
+    // Best-effort override on the global; some engines disallow this, so
+    // we also throw on access via Object.defineProperty.
+    Object.defineProperty(self, "Function", {
+      configurable: false,
+      writable: false,
+      value: denyFunction,
+    });
+  } catch (_) {}
   try {
     // importScripts loads classic scripts synchronously; we never want that.
     self.importScripts = function () {
       throw new Error("pluginforge: importScripts is disabled");
+    };
+  } catch (_) {}
+  try {
+    // eval is indirect-callable; kill it too for symmetry with Function.
+    // We can't fully remove it, but we can replace the binding visible here.
+    self.eval = function () {
+      throw new Error("pluginforge: eval is disabled in the sandbox");
     };
   } catch (_) {}
 })();
@@ -200,11 +256,11 @@ async function __loadBundle(msg) {
     }
     __postMsg({ kind: "ready" });
   } catch (err) {
-    __postMsg({
-      kind: "log",
-      level: "error",
-      args: ["bundle load failed:", String(err && err.message ? err.message : err)],
-    });
+    const errStr = String(err && err.message ? err.message : err);
+    __postMsg({ kind: "log", level: "error", args: ["bundle load failed:", errStr] });
+    // Surface the failure to the host as a log that it can treat as fatal.
+    // We don't post { kind: "ready" }; the host's load timeout will fire
+    // with this log line as the last context before rejecting load().
   }
 }
 

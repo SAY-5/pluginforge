@@ -73,23 +73,37 @@ export function humanizeCapability(c: Capability | CapabilityName): string {
   }
 }
 
-/** Match a URL pattern with * as a wildcard. Only path wildcards allowed. */
+/** Match a URL pattern with `*` as a wildcard. Only path wildcards allowed. */
 export function matchUrlPattern(pattern: string, url: string): boolean {
-  // Split scheme://host[:port]/rest
-  const m = /^([a-z]+):\/\/([^/]+)(\/.*)?$/.exec(pattern);
-  const u = /^([a-z]+):\/\/([^/]+)(\/.*)?$/.exec(url);
-  if (!m || !u) return false;
-  if (m[1] !== u[1]) return false; // scheme must match exactly
-  if (m[2] !== u[2]) return false; // host (and port) must match exactly
-  const pPath = m[3] ?? "/";
-  const uPath = u[3] ?? "/";
+  // Parse + normalize both sides with the URL API so percent-encoding and
+  // relative path segments ("..", ".", repeated slashes) can't smuggle past
+  // an otherwise-strict allow-list.
+  let pUrl: URL, uUrl: URL;
+  try {
+    pUrl = new URL(pattern);
+    uUrl = new URL(url);
+  } catch {
+    return false;
+  }
+  if (pUrl.protocol !== uUrl.protocol) return false;
+  if (pUrl.host !== uUrl.host) return false;
+  const pPath = pUrl.pathname || "/";
+  const uPath = uUrl.pathname || "/";
+  // After URL normalization, ".." / "." in the requested URL have already
+  // been resolved. But a pattern author may want to allow traversal-free
+  // paths only — reject any requested path whose *original* string encodes
+  // a traversal segment.
+  if (/(^|\/)\.\.(\/|$)/.test(url)) return false;
   if (!pPath.includes("*")) return pPath === uPath;
-  // Regex from pattern: escape regex meta, turn * into [^\s]*
+  // `*` matches any path characters (including `/`) so a pattern like
+  // `https://api.example.com/*` covers the whole subtree. Traversal
+  // segments (`..`) are rejected above, and percent-decoding by `new URL`
+  // normalizes the path before this matcher sees it.
   const re = new RegExp(
     "^" +
       pPath
         .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
-        .replace(/\*/g, "[^\\s]*") +
+        .replace(/\*/g, ".*") +
       "$",
   );
   return re.test(uPath);

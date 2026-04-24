@@ -25,4 +25,21 @@ describe("matchUrlPattern", () => {
     expect(matchUrlPattern("https://a.example:8080/*", "https://a.example:8080/x")).toBe(true);
     expect(matchUrlPattern("https://a.example:8080/*", "https://a.example/x")).toBe(false);
   });
+
+  it("rejects `..` traversal segments in the requested URL", () => {
+    expect(
+      matchUrlPattern("https://a.example/public/*", "https://a.example/public/../private/x"),
+    ).toBe(false);
+  });
+
+  it("is not fooled by a look-alike host", () => {
+    expect(
+      matchUrlPattern("https://api.example.com/*", "https://api.example.com.attacker.com/foo"),
+    ).toBe(false);
+  });
+
+  it("rejects malformed URLs/patterns", () => {
+    expect(matchUrlPattern("not-a-url", "https://a.example")).toBe(false);
+    expect(matchUrlPattern("https://a.example/*", "also-not-a-url")).toBe(false);
+  });
 });
