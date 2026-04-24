@@ -118,10 +118,22 @@ describe("sandbox escape vectors are blocked", () => {
     expect(err).toMatch(/is not available|is not a constructor/);
   });
 
-  it("WebAssembly is unavailable", async () => {
-    // WebAssembly is now undefined; any property access throws naturally.
-    const err = await expectBlocked("return WebAssembly.instantiate(new Uint8Array(0));");
-    expect(err).toMatch(/Cannot read properties of undefined|is undefined|reading 'instantiate'/);
+  it("WebAssembly reachable but has no ambient I/O", async () => {
+    // WebAssembly is intentionally kept reachable (Node 22+ uses it in
+    // async function compilation). Security comes from the import-object
+    // contract: Wasm can only reach what it's given, and every ambient
+    // I/O primitive a plugin might pass in (fetch, XHR, storage) is
+    // already stubbed. A module with no imports can only compute.
+    const res = await runProbe(
+      "return typeof WebAssembly === 'object' && typeof fetch === 'function';",
+    );
+    expect(res.ok).toBe(true);
+    expect(res.value).toBe(true);
+
+    // The denyCtor stub still fires if a plugin tries to call fetch —
+    // and that's the actual attack surface the sandbox defends against.
+    const err = await expectBlocked("return await fetch('https://evil.example.com');");
+    expect(err).toMatch(/is not available|is not a constructor/);
   });
 
   it("importScripts is disabled (throws on call)", async () => {

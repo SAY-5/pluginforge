@@ -45,6 +45,15 @@ export const BOOTSTRAP_SOURCE = String.raw`
   ];
   // Non-callable slots: set to undefined. Any property access throws
   // naturally ("Cannot read properties of undefined"), no custom getter.
+  //
+  // WebAssembly is INTENTIONALLY kept reachable. Node 22+ uses it during
+  // async-function compilation; setting it to undefined breaks every
+  // promise-based callsite inside the worker, including the plugin's own
+  // code. Leaving it reachable is safe: Wasm has no ambient I/O —
+  // everything goes through the import object, and every import a
+  // plugin would want to pass (fetch, postMessage, storage) is already
+  // stubbed or absent at the global level. A Wasm module with no
+  // imports can only compute; it cannot exfiltrate.
   const voids = [
     "indexedDB",
     "caches",
@@ -58,7 +67,6 @@ export const BOOTSTRAP_SOURCE = String.raw`
     "openDatabase",
     "SharedArrayBuffer",
     "Atomics",
-    "WebAssembly",
   ];
   for (const k of callables) {
     try {
