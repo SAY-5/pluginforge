@@ -106,11 +106,13 @@ tests across three files).
 
 ## Companion projects
 
-Part of a three-repo set:
+Part of a five-repo set:
 
 - **[canvaslive](https://github.com/SAY-5/canvaslive)** — real-time multiplayer whiteboard with operational-transform convergence.
 - **[pluginforge](https://github.com/SAY-5/pluginforge)** — you're here. Sandboxed plugin runtime.
 - **[agentlab](https://github.com/SAY-5/agentlab)** — multi-model AI coding agent evaluation harness.
+- **[payflow](https://github.com/SAY-5/payflow)** — Spring Boot payments API with idempotent transactions and Stripe webhooks.
+- **[queryflow](https://github.com/SAY-5/queryflow)** — natural-language SQL engine with pgvector RAG.
 
 ## License
 
