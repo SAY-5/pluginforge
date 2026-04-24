@@ -95,31 +95,33 @@ async function expectBlocked(probe: string): Promise<string> {
 describe("sandbox escape vectors are blocked", () => {
   it("fetch is unavailable", async () => {
     const err = await expectBlocked("return fetch('https://example.com');");
-    expect(err).toMatch(/fetch/);
+    expect(err).toMatch(/is not available|is not a function/);
   });
 
   it("XMLHttpRequest is unavailable", async () => {
     const err = await expectBlocked("return new XMLHttpRequest();");
-    expect(err).toMatch(/XMLHttpRequest|is not available/);
+    expect(err).toMatch(/is not available|is not a constructor/);
   });
 
   it("WebSocket is unavailable", async () => {
-    await expectBlocked("return new WebSocket('wss://evil.example.com');");
+    const err = await expectBlocked("return new WebSocket('wss://evil.example.com');");
+    expect(err).toMatch(/is not available|is not a constructor/);
   });
 
   it("BroadcastChannel is unavailable", async () => {
     const err = await expectBlocked("return new BroadcastChannel('x');");
-    expect(err).toMatch(/BroadcastChannel|is not available/);
+    expect(err).toMatch(/is not available|is not a constructor/);
   });
 
   it("MessageChannel is unavailable", async () => {
     const err = await expectBlocked("return new MessageChannel();");
-    expect(err).toMatch(/MessageChannel|is not available/);
+    expect(err).toMatch(/is not available|is not a constructor/);
   });
 
   it("WebAssembly is unavailable", async () => {
+    // WebAssembly is now undefined; any property access throws naturally.
     const err = await expectBlocked("return WebAssembly.instantiate(new Uint8Array(0));");
-    expect(err).toMatch(/WebAssembly|is not available/);
+    expect(err).toMatch(/Cannot read properties of undefined|is undefined|reading 'instantiate'/);
   });
 
   it("importScripts is disabled (throws on call)", async () => {
@@ -127,21 +129,18 @@ describe("sandbox escape vectors are blocked", () => {
     expect(err).toMatch(/importScripts|is disabled/);
   });
 
-  it("self.constructor escape is closed", async () => {
+  it("self.constructor escape reaches no real fetch", async () => {
     // The classic escape: self.constructor.constructor('return fetch')()
-    // The redefinition of `constructor` on self should make this throw or
-    // yield a harmless value; either way, it must NOT return a callable
-    // that reaches real fetch.
+    // With the current kill pattern, fetch is replaced by a throwing
+    // stub — so even if the Function chain survives, INVOKING fetch must
+    // throw. Actually perform the call and assert it does.
     const err = await expectBlocked(
-      "const F = self.constructor.constructor; const reached = F('return fetch')(); " +
-      "if (typeof reached === 'function' || typeof reached === 'object') return await reached; " +
-      "throw new Error('self.constructor escape returned: ' + String(reached));",
+      "const F = self.constructor.constructor; " +
+      "const reached = F('return fetch')(); " +
+      "if (typeof reached !== 'function') throw new Error('reached non-function: ' + String(reached)); " +
+      "await reached('https://evil.example.com');",
     );
-    // We expect either "fetch is not available" (if the Function did
-    // execute but hit the killed fetch global) OR "dynamic Function() is
-    // disabled" (if our replacement Function stub ran). Both are
-    // acceptable — what we never want is a successful network call.
-    expect(err).toMatch(/fetch|Function|is not available|disabled/);
+    expect(err).toMatch(/is not available|Function|disabled|is not a constructor|Cannot read/);
   });
 
   it("eval is defanged", async () => {
@@ -150,6 +149,7 @@ describe("sandbox escape vectors are blocked", () => {
   });
 
   it("localStorage / indexedDB / caches are unavailable", async () => {
+    // All three are now undefined; any property access throws naturally.
     await expectBlocked("return localStorage.getItem('x');");
     await expectBlocked("return indexedDB.open('x');");
     await expectBlocked("return caches.open('x');");

@@ -17,12 +17,35 @@ export const BOOTSTRAP_SOURCE = String.raw`
 //       BroadcastChannel, MessageChannel with transferable ports).
 // We kill both. The kill-IIFE runs synchronously before anything else so
 // nothing can capture an earlier reference to the killed globals.
+//
+// We *deliberately* replace each slot with a stub that throws only on
+// INVOCATION / property-access, rather than with a getter that throws on
+// read. A throwing getter is dangerous because V8 + Node internals
+// sometimes probe these globals during error handling or module loading —
+// on affected versions those probes trip our getter and the real failure
+// (which is what we actually want surfaced) gets shadowed. Stubs that
+// appear as plain undefined/function values are indistinguishable from
+// absence and don't perturb the host runtime.
 (function () {
-  const kill = [
+  const denyCtor = function () {
+    throw new Error("pluginforge: this API is not available in the sandbox");
+  };
+  // Callable stubs (both "new X(...)" and "X(...)" syntaxes throw).
+  const callables = [
     "fetch",
     "XMLHttpRequest",
     "WebSocket",
     "EventSource",
+    "BroadcastChannel",
+    "MessageChannel",
+    "MessagePort",
+    "Worker",
+    "SharedWorker",
+    "ServiceWorker",
+  ];
+  // Non-callable slots: set to undefined. Any property access throws
+  // naturally ("Cannot read properties of undefined"), no custom getter.
+  const voids = [
     "indexedDB",
     "caches",
     "navigator",
@@ -35,29 +58,27 @@ export const BOOTSTRAP_SOURCE = String.raw`
     "openDatabase",
     "SharedArrayBuffer",
     "Atomics",
-    // Out-of-band comms / cross-origin channels.
-    "BroadcastChannel",
-    "MessageChannel",
-    "MessagePort",
-    // Wasm can import host-provided functions and smuggle state back;
-    // denying it is defense in depth beyond what fetch-blocking gives us.
     "WebAssembly",
-    // Nested worker construction would let plugins spawn unsandboxed siblings.
-    "Worker",
-    "SharedWorker",
-    "ServiceWorker",
   ];
-  for (const k of kill) {
+  for (const k of callables) {
     try {
       Object.defineProperty(self, k, {
         configurable: true,
-        get() {
-          throw new Error("pluginforge: '" + k + "' is not available in the sandbox");
-        },
+        writable: false,
+        value: denyCtor,
       });
     } catch (_) {
       // Some globals are non-configurable; best-effort.
     }
+  }
+  for (const k of voids) {
+    try {
+      Object.defineProperty(self, k, {
+        configurable: true,
+        writable: false,
+        value: undefined,
+      });
+    } catch (_) {}
   }
   // Defuse the self.constructor → Function escape. The Function constructor
   // turns a string into a function bound to the real global, which is how
