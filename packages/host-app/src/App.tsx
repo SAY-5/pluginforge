@@ -110,8 +110,30 @@ export function App() {
 
   return (
     <div className="app">
+      <header className="topbar">
+        <div className="topbar-brand">
+          <span className="topbar-brand-logo">⬢</span>
+          <span>plugin</span>
+          <span className="slash">/</span>
+          <span>forge</span>
+          <span className="tag">· runtime</span>
+        </div>
+        <div className="topbar-meta">
+          <span>plugins<b>{plugins.length}</b></span>
+          <span>commands<b>{commands.length}</b></span>
+          <span>
+            palette <kbd>⌘K</kbd>
+          </span>
+        </div>
+      </header>
+
       <aside className="sidebar">
-        <h2>Plugins</h2>
+        <h2>
+          <span>Installed</span>
+          <span style={{ color: "var(--fg-muted)", fontWeight: 400, fontSize: 9.5 }}>
+            {plugins.length}/3
+          </span>
+        </h2>
         <ul className="plugin-list">
           {plugins.map((p) => (
             <li
@@ -126,7 +148,9 @@ export function App() {
             </li>
           ))}
           {plugins.length === 0 && (
-            <li style={{ color: "var(--fg-dim)" }}>Loading demo plugins…</li>
+            <li style={{ color: "var(--fg-muted)", fontStyle: "italic" }}>
+              boot sequence…
+            </li>
           )}
         </ul>
       </aside>
@@ -140,16 +164,25 @@ export function App() {
           />
         ) : (
           <div className="card">
-            <h3>Pick a plugin on the left</h3>
-            <p style={{ color: "var(--fg-dim)" }}>
-              Press <kbd>⌘K</kbd> / <kbd>Ctrl+K</kbd> for the command palette.
+            <div className="card-eyebrow">Ready</div>
+            <h3>Select a plugin from the left rail</h3>
+            <p>
+              Press <kbd>⌘K</kbd> / <kbd>Ctrl+K</kbd> to open the command
+              palette — commands are aggregated across every loaded plugin.
+              Plugin runtime boots each into a hardened Web Worker; the
+              right panel streams their output.
             </p>
           </div>
         )}
       </main>
 
       <aside className="console">
-        <h2>Console</h2>
+        <h2>
+          <span>Runtime log</span>
+          <span style={{ color: "var(--fg-muted)", fontWeight: 400, fontSize: 9.5 }}>
+            {logs.length}
+          </span>
+        </h2>
         <div className="console-log">
           {logs.slice(-300).map((l) => (
             <div key={l.id} className={`line ${l.level}`}>
@@ -171,7 +204,7 @@ export function App() {
             <input
               autoFocus
               value={paletteQuery}
-              placeholder="Search commands…"
+              placeholder="▸ search commands across all plugins…"
               onChange={(e) => {
                 setPaletteQuery(e.target.value);
                 setPaletteCursor(0);
@@ -193,7 +226,6 @@ export function App() {
                   }
                 }
               }}
-              style={{ margin: 10 }}
             />
             <ul className="command-palette-list">
               {filteredCommands.map((c, i) => (
@@ -206,14 +238,16 @@ export function App() {
                     void invokeCommand(c.pluginId, c.id);
                   }}
                 >
-                  <div>{c.title}</div>
-                  <div style={{ color: "var(--fg-dim)", fontSize: 11 }}>
-                    {c.pluginId} · {c.id}
-                  </div>
+                  <span>{c.title}</span>
+                  <span className="meta">
+                    {c.pluginId.split(".").pop()} · {c.id}
+                  </span>
                 </li>
               ))}
               {filteredCommands.length === 0 && (
-                <li style={{ color: "var(--fg-dim)" }}>no matches</li>
+                <li style={{ color: "var(--fg-muted)", fontStyle: "italic" }}>
+                  no matches
+                </li>
               )}
             </ul>
           </div>
@@ -236,19 +270,25 @@ function PluginDetail({
   return (
     <>
       <div className="card">
+        <div className="card-eyebrow">{plugin.status}</div>
         <h3>
-          {m.name}{" "}
-          <span style={{ color: "var(--fg-dim)", fontWeight: 400 }}>
-            v{m.version}
-          </span>
+          {m.name}
+          <span className="version">v{m.version}</span>
         </h3>
         {m.description && <p>{m.description}</p>}
-        <p style={{ color: "var(--fg-dim)" }}>
-          status: <b>{plugin.status}</b>
-        </p>
+        <div className="status-row">
+          <span>id <b>{m.id}</b></span>
+          <span>caps <b>{m.capabilities.length}</b></span>
+          <span>commands <b>{commands.length}</b></span>
+        </div>
       </div>
       <div className="card">
-        <h3>Capabilities</h3>
+        <div className="card-eyebrow">Capabilities</div>
+        <h3>Granted surface</h3>
+        <p style={{ marginBottom: 16 }}>
+          Every RPC from this plugin is validated against these grants at
+          the boundary. Nothing else is reachable.
+        </p>
         <ul className="caps">
           {m.capabilities.map((c, i) => (
             <li key={i}>
@@ -257,20 +297,37 @@ function PluginDetail({
             </li>
           ))}
           {m.capabilities.length === 0 && (
-            <li style={{ color: "var(--fg-dim)" }}>no capabilities requested</li>
+            <li style={{ color: "var(--fg-muted)", fontStyle: "italic" }}>
+              no capabilities requested
+            </li>
           )}
         </ul>
       </div>
       <div className="card">
-        <h3>Commands</h3>
+        <div className="card-eyebrow">Commands</div>
+        <h3>Registered actions</h3>
         {commands.length === 0 ? (
-          <p style={{ color: "var(--fg-dim)" }}>none registered yet</p>
+          <p style={{ color: "var(--fg-muted)", fontStyle: "italic" }}>
+            no commands registered yet — plugin may still be activating
+          </p>
         ) : (
           <ul className="caps">
             {commands.map((c) => (
               <li key={c.id}>
-                <span>{c.title}</span>
-                <button onClick={() => onInvoke(c.id)}>Run</button>
+                <span>
+                  {c.title}{" "}
+                  <span
+                    style={{
+                      color: "var(--fg-muted)",
+                      fontFamily: "var(--mono)",
+                      fontSize: 11,
+                      marginLeft: 6,
+                    }}
+                  >
+                    · {c.id}
+                  </span>
+                </span>
+                <button onClick={() => onInvoke(c.id)}>▶ run</button>
               </li>
             ))}
           </ul>
