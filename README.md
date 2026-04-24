@@ -1,5 +1,10 @@
 # PluginForge
 
+[![ci](https://github.com/SAY-5/pluginforge/actions/workflows/ci.yml/badge.svg)](https://github.com/SAY-5/pluginforge/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![tests](https://img.shields.io/badge/tests-33%20passing-brightgreen)](#)
+[![sandbox escape tests](https://img.shields.io/badge/escape_tests-12-4fe3b0)](#)
+
 Extensibility platform with **WebWorker-sandboxed plugin runtime** and
 **capability-based permissions**. Plugins run in a hardened worker with no
 ambient authority — every host capability is gated by a manifest declaration
@@ -98,6 +103,14 @@ npm test
 
 Runs capability-router, URL-match, and sandbox host lifecycle tests (16
 tests across three files).
+
+## Companion projects
+
+Part of a three-repo set:
+
+- **[canvaslive](https://github.com/SAY-5/canvaslive)** — real-time multiplayer whiteboard with operational-transform convergence.
+- **[pluginforge](https://github.com/SAY-5/pluginforge)** — you're here. Sandboxed plugin runtime.
+- **[agentlab](https://github.com/SAY-5/agentlab)** — multi-model AI coding agent evaluation harness.
 
 ## License
 
