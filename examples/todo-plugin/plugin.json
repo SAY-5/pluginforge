@@ -1,0 +1,21 @@
+{
+  "id": "com.example.todo",
+  "name": "Todo",
+  "version": "1.0.0",
+  "description": "CRUD todos with scoped storage. Demonstrates events.",
+  "main": "dist/index.js",
+  "capabilities": [
+    "storage:scoped",
+    "ui:command",
+    "ui:notify",
+    { "name": "net:fetch", "params": { "allow": ["https://worldtimeapi.org/*"] } }
+  ],
+  "activationEvents": ["onCommand:todo.add", "onCommand:todo.list"],
+  "contributes": {
+    "commands": [
+      { "id": "todo.add", "title": "Todo → Add" },
+      { "id": "todo.list", "title": "Todo → List" },
+      { "id": "todo.toggle", "title": "Todo → Toggle done" }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "com.example.hello",
+  "name": "Hello Plugin",
+  "version": "1.0.0",
+  "description": "Minimal plugin that registers a command and shows a toast.",
+  "main": "dist/index.js",
+  "capabilities": ["ui:notify", "ui:command"],
+  "activationEvents": ["onCommand:hello.sayHi"],
+  "contributes": {
+    "commands": [{ "id": "hello.sayHi", "title": "Say Hi" }]
+  }
+}

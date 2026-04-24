@@ -1,0 +1,15 @@
+{
+  "id": "com.example.markdown",
+  "name": "Markdown Renderer",
+  "version": "1.0.0",
+  "description": "Renders a tiny subset of markdown to HTML and stores snippets.",
+  "main": "dist/index.js",
+  "capabilities": ["storage:scoped", "ui:command", "ui:notify"],
+  "activationEvents": ["onCommand:md.render", "onCommand:md.save"],
+  "contributes": {
+    "commands": [
+      { "id": "md.render", "title": "Markdown → Render" },
+      { "id": "md.save", "title": "Markdown → Save snippet" }
+    ]
+  }
+}

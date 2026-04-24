@@ -1,0 +1,199 @@
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --border: #30363d;
+  --fg: #c9d1d9;
+  --fg-dim: #8b949e;
+  --accent: #58a6ff;
+  --danger: #f85149;
+  --ok: #3fb950;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px;
+  height: 100vh;
+}
+
+.sidebar,
+.main,
+.console {
+  border-right: 1px solid var(--border);
+  overflow: auto;
+}
+.console {
+  border-right: 0;
+  background: #0b0f14;
+}
+
+.sidebar h2,
+.console h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--fg-dim);
+  padding: 12px;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.plugin-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.plugin-list li {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.plugin-list li.active {
+  background: #1f2937;
+}
+.plugin-list .name {
+  font-weight: 600;
+  color: var(--fg);
+}
+.plugin-list .version {
+  color: var(--fg-dim);
+  font-size: 11px;
+}
+
+.main {
+  padding: 16px;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.caps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.caps li {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.caps li:last-child {
+  border: 0;
+}
+.badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  color: var(--fg-dim);
+}
+.badge.ok {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+.badge.denied {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+button {
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font: inherit;
+}
+button.primary {
+  background: var(--accent);
+  color: #0d1117;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+button:hover {
+  border-color: var(--accent);
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 6px 8px;
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--fg);
+  font: inherit;
+}
+
+.command-palette {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 17, 23, 0.9);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+}
+.command-palette-inner {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 480px;
+  max-height: 70vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.command-palette-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+}
+.command-palette-list li {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+.command-palette-list li.active {
+  background: #1f2937;
+}
+
+.console-log {
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.console-log .line {
+  margin-bottom: 2px;
+}
+.console-log .line.error {
+  color: var(--danger);
+}
+.console-log .line.warn {
+  color: #d29922;
+}
+.console-log .plugin-id {
+  color: var(--fg-dim);
+}
