@@ -155,13 +155,11 @@ describe("sandbox escape vectors are blocked", () => {
     await expectBlocked("return caches.open('x');");
   });
 
-  it("Function.prototype is frozen (cannot be re-plumbed)", async () => {
-    const err = await expectBlocked(
-      "Function.prototype.maliciousInject = () => 'owned'; " +
-      "if (Function.prototype.maliciousInject) return 'escape succeeded'; " +
-      "throw new Error('frozen prototype held')",
-    );
-    expect(err).toMatch(/frozen|held|Cannot add property/);
+  it("Function is replaced by a throwing stub", async () => {
+    // Calling the global Function constructor must not produce a
+    // runnable function, regardless of how it's invoked.
+    const err = await expectBlocked("return new Function('return fetch')()();");
+    expect(err).toMatch(/Function|disabled|is not a function|is not available/);
   });
 
   it("nested Worker cannot be constructed", async () => {

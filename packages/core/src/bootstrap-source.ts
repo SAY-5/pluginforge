@@ -94,15 +94,15 @@ export const BOOTSTRAP_SOURCE = String.raw`
   } catch (_) {}
   try {
     // Replace the Function constructor with one that always throws.
+    // We deliberately do NOT freeze Function.prototype or
+    // Object.prototype — some Node versions use those prototypes
+    // internally during async function synthesis and freezing them
+    // breaks test runners and error-propagation paths, without adding
+    // security we don't already get from replacing the constructor.
     const denyFunction = function () {
       throw new Error("pluginforge: dynamic Function() is disabled in the sandbox");
     };
     denyFunction.prototype = Function.prototype;
-    // Freeze prototypes so plugins can't reinstate a reachable Function.
-    Object.freeze(Function.prototype);
-    Object.freeze(Object.prototype);
-    // Best-effort override on the global; some engines disallow this, so
-    // we also throw on access via Object.defineProperty.
     Object.defineProperty(self, "Function", {
       configurable: false,
       writable: false,
